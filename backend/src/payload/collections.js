@@ -335,3 +335,64 @@ export const SiteAnnouncement = {
         { name: 'expires_at', type: 'date', label: 'Hide after', admin: { date: { pickerAppearance: 'dayAndTime' }, description: 'Optional. E.g. the end of the maintenance window.' } },
     ],
 };
+
+/**
+ * Saved viewer setups (docs/workflows-design.md). Anyone can make one; `public` ones can be
+ * approved for a case by its admin. First pass: SlicerWeb extensions only.
+ */
+export const Workflows = {
+    slug: 'workflows',
+    admin: { useAsTitle: 'name' },
+    fields: [
+        { name: 'name', type: 'text', required: true },
+        { name: 'description', type: 'textarea' },
+        { name: 'owner_id', type: 'text', label: 'Owner (Keycloak sub)', required: true, index: true },
+        {
+            name: 'visibility',
+            type: 'select',
+            options: [
+                { label: 'Just me', value: 'private' },
+                { label: 'Public',  value: 'public' },
+            ],
+            defaultValue: 'private',
+            required: true,
+            index: true,
+        },
+        {
+            // Only SlicerWeb for now; kept so Full Slicer can be added without a schema change.
+            name: 'target',
+            type: 'select',
+            options: [{ label: 'SlicerWeb', value: 'slicerweb' }],
+            defaultValue: 'slicerweb',
+            required: true,
+        },
+        { name: 'extensions', type: 'json' }, // string[] of extension names
+        { name: 'icon_key', type: 'text' },   // storage key of an uploaded icon (routes/workflows.js)
+        { name: 'file_types', type: 'json' }, // string[]: data file extensions it's for ("mrb", "nii.gz"); empty = any
+    ],
+};
+
+/**
+ * A workflow approved for a case by a case admin. Holds a copy of the workflow as approved,
+ * so later edits (or deletion) by its owner don't change the case until it is re-approved.
+ */
+export const CaseWorkflows = {
+    slug: 'case-workflows',
+    admin: { useAsTitle: 'name' },
+    fields: [
+        { name: 'case', type: 'relationship', relationTo: 'cases', required: true, index: true },
+        { name: 'workflow', type: 'text', label: 'Source workflow ID', required: true, index: true },
+        { name: 'name', type: 'text', required: true },
+        { name: 'extensions', type: 'json' },
+        { name: 'approved_by', type: 'text', label: 'Approved by (Keycloak sub)', required: true },
+        { name: 'approved_at', type: 'date', required: true },
+        // The source's updatedAt when approved: a later one means "Update available".
+        { name: 'source_updated_at', type: 'date' },
+    ],
+};
+
+/** Every collection, in one list for both Payload configs (backend + payload-admin). */
+export const ALL_COLLECTIONS = [
+    Users, Cases, Attachments, CaseComments, CaseInvites, CaseGroupAccess, UserPreferences,
+    RegistrationRequests, Groups, GroupMembers, UserNotifications, Workflows, CaseWorkflows,
+];

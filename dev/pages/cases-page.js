@@ -1,4 +1,6 @@
 import { LitElement, html, css } from 'lit-element';
+import { listPageStyles } from '../styles/listPage.js';
+import { LIST_SORT_OPTIONS, filterByText, sortRows } from '../utils/listSort.js';
 import { t } from '../i18n/index.js';
 import '../components/page-layout-template.js';
 import '../components/page-content-message.js';
@@ -19,6 +21,7 @@ import {
 import '../components/people-dialog.js';
 import '../components/list-filter-tools.js';
 import '../components/attachment-open-menu.js';
+import '../components/case-workflows.js';
 import { formatBytes } from '../utils/formatBytes.js';
 import { deepActiveElement } from '../utils/focus.js';
 import {
@@ -44,24 +47,6 @@ import {
     resetViewerActivity
 } from '../utils/viewerActivity.js';
 import { classifySlicerLoadError } from '../services/slicerErrors.js';
-
-const LIST_SORT_OPTIONS = Object.freeze([
-    Object.freeze({
-        value: 'newest',
-        label: t('cases.sortNewest'),
-        ariaLabel: t('cases.sortNewestAria')
-    }),
-    Object.freeze({
-        value: 'oldest',
-        label: t('cases.sortOldest'),
-        ariaLabel: t('cases.sortOldestAria')
-    }),
-    Object.freeze({
-        value: 'title',
-        label: t('cases.sortTitle'),
-        ariaLabel: t('cases.sortTitleAria')
-    })
-]);
 
 const attachmentFileName = (attachment) => attachment?.filenameDownload || attachment?.name || 'attachment';
 
@@ -104,198 +89,12 @@ function writeCaseCommentSeenMap(map) {
  */
 export class CasesPage extends LitElement {
     static get styles() {
-        return css`
+        return [listPageStyles, css`
             :host {
                 display: block;
                 width: 100%;
                 min-width: 0;
                 box-sizing: border-box;
-            }
-
-            /* â”€â”€â”€ Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .status-note {
-                color: var(--color-text-secondary);
-                font-size: 0.9rem;
-                padding: 8px 0;
-            }
-
-            /* â”€â”€â”€ Landing: page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .page-header-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 16px;
-                margin-bottom: 20px;
-                padding-bottom: 16px;
-                border-bottom: 1px solid var(--color-border);
-            }
-
-            .page-header-actions {
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-                flex-shrink: 0;
-            }
-
-            .page-heading {
-                margin: 0;
-                font-size: 1.15rem;
-                font-weight: 650;
-                color: var(--color-text-primary);
-                letter-spacing: -0.01em;
-            }
-
-            .page-header-row .primary-button::before {
-                content: '+';
-                margin-right: 5px;
-                font-weight: 300;
-                font-size: 1.15em;
-                line-height: 1;
-            }
-
-            .page-header-row .primary-button.is-cancel::before {
-                content: none;
-            }
-
-            .cases-empty-filter {
-                margin: 0;
-                color: var(--color-text-secondary);
-                font-size: 0.9rem;
-            }
-
-            /* â”€â”€â”€ Landing: case grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .case-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-                gap: 10px;
-                width: 100%;
-                min-width: 0;
-            }
-
-            .case-card {
-                position: relative;
-                border: 1px solid var(--color-border);
-                border-left: 3px solid var(--color-primary);
-                border-radius: 8px;
-                background: var(--color-surface, var(--color-background));
-                padding: 14px 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-                cursor: pointer;
-                transition: box-shadow 0.14s ease, transform 0.14s ease, border-color 0.14s ease;
-                text-align: left;
-                font: inherit;
-                color: inherit;
-                width: 100%;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-                appearance: none;
-                -webkit-appearance: none;
-            }
-
-            .case-card.is-archived {
-                border-left-color: var(--color-text-secondary);
-                opacity: 0.7;
-            }
-
-            .case-card:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-                border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
-                border-left-color: var(--color-primary);
-            }
-
-            .case-card.is-archived:hover {
-                border-left-color: var(--color-text-secondary);
-                border-color: var(--color-border);
-            }
-
-            .case-card:focus-visible {
-                outline: 2px solid var(--color-primary);
-                outline-offset: 2px;
-                box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
-            }
-
-            .case-card-title-row {
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 10px;
-            }
-
-            .case-card-title {
-                font-size: 0.925rem;
-                font-weight: 600;
-                color: var(--color-text-primary);
-                line-height: 1.3;
-                min-width: 0;
-            }
-
-            .case-card-new-badge {
-                flex-shrink: 0;
-                display: inline-flex;
-                align-items: center;
-                font-size: 0.68rem;
-                font-weight: 700;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
-                padding: 2px 7px;
-                border-radius: 4px;
-                border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, var(--color-border));
-                background: color-mix(in srgb, var(--color-secondary) 16%, transparent);
-                color: var(--color-primary);
-                line-height: 1.3;
-            }
-
-            :host-context([data-theme='dark']) .case-card-new-badge {
-                border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-                background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-                color: var(--color-text-primary);
-            }
-
-            .case-card-desc {
-                font-size: 0.85rem;
-                color: var(--color-text-secondary);
-                line-height: 1.45;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-                overflow: hidden;
-                margin: 0;
-            }
-
-            .case-card-meta-row {
-                display: flex;
-                align-items: center;
-                gap: 0;
-                margin-top: 6px;
-                flex-wrap: wrap;
-            }
-
-            .case-card-meta-item {
-                font-size: 0.78rem;
-                color: var(--color-text-secondary);
-            }
-
-            .case-card-meta-item + .case-card-meta-item::before {
-                content: 'Â·';
-                margin: 0 5px;
-                opacity: 0.45;
-            }
-
-            /* â”€â”€â”€ Status chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .status-chip {
-                display: inline-flex;
-                align-items: center;
-                font-size: 0.7rem;
-                font-weight: 650;
-                letter-spacing: 0.05em;
-                text-transform: uppercase;
-                padding: 2px 7px;
-                border-radius: 4px;
-                border: 1px solid var(--color-border);
-                background: color-mix(in srgb, var(--color-border) 18%, transparent);
-                color: var(--color-text-secondary);
             }
 
             /* â”€â”€â”€ Detail: layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -321,7 +120,7 @@ export class CasesPage extends LitElement {
                 min-height: 380px;
             }
 
-            .case-detail-grid .files-panel {
+            .case-detail-grid .list-panel {
                 order: 1;
                 min-width: 0;
                 min-height: 0;
@@ -346,7 +145,7 @@ export class CasesPage extends LitElement {
                 min-height: 0;
             }
 
-            .case-detail[data-stack] .case-detail-grid .files-panel {
+            .case-detail[data-stack] .case-detail-grid .list-panel {
                 height: auto;
                 max-height: none;
                 min-height: 0;
@@ -369,7 +168,7 @@ export class CasesPage extends LitElement {
                     min-height: 0;
                 }
 
-                .case-detail-grid .files-panel {
+                .case-detail-grid .list-panel {
                     height: auto;
                     max-height: none;
                     min-height: 0;
@@ -386,83 +185,6 @@ export class CasesPage extends LitElement {
             }
 
             /* â”€â”€â”€ Detail: toolbar + header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .detail-toolbar {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                flex-wrap: wrap;
-            }
-
-            .back-link {
-                border: none;
-                background: transparent;
-                padding: 4px 0;
-                margin: 0;
-                font: inherit;
-                font-size: 0.875rem;
-                font-weight: 600;
-                color: var(--color-focus);
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .back-link:hover,
-            .back-link:focus-visible {
-                color: var(--color-text-primary);
-            }
-
-            .back-link:focus-visible {
-                outline: var(--focus-ring-width, 3px) solid var(--color-focus, var(--color-secondary));
-                outline-offset: var(--focus-ring-offset, 2px);
-                border-radius: 4px;
-            }
-
-            .detail-toolbar-actions {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-
-            .detail-header {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-                padding: 14px 16px 16px;
-                border: 1px solid var(--color-border);
-                border-radius: var(--radius-lg);
-                background: var(--color-panel, #fff);
-                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-                border-left: 4px solid var(--color-primary);
-            }
-
-            .detail-title-row {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-
-            .detail-title {
-                margin: 0;
-                font-size: 1.4rem;
-                font-weight: 700;
-                color: var(--color-primary);
-                letter-spacing: -0.02em;
-                line-height: 1.25;
-            }
-
-            .detail-desc {
-                margin: 0;
-                font-size: 0.95rem;
-                color: var(--color-text-secondary);
-                line-height: 1.55;
-                max-width: 46rem;
-            }
-
             .quiet-button {
                 border: 1px solid var(--color-border);
                 border-radius: 6px;
@@ -507,90 +229,6 @@ export class CasesPage extends LitElement {
                 font-weight: 700;
                 line-height: 1;
                 vertical-align: middle;
-            }
-
-            /* â”€â”€â”€ Detail: files panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .files-panel {
-                border: 1px solid var(--color-border);
-                border-left: 4px solid var(--color-primary);
-                border-radius: var(--radius-lg);
-                background: var(--color-panel, #fff);
-                display: flex;
-                flex-direction: column;
-                min-height: 360px;
-                overflow: hidden;
-                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-            }
-
-            .panel-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
-                min-height: 44px;
-                padding: 0 16px;
-                border-bottom: 1px solid var(--color-border);
-                background: var(--color-panel, #fff);
-                box-sizing: border-box;
-                flex-shrink: 0;
-            }
-
-            .panel-header-start {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                min-width: 0;
-            }
-
-            .panel-title {
-                margin: 0;
-                font-size: 0.72rem;
-                font-weight: 700;
-                letter-spacing: 0.07em;
-                text-transform: uppercase;
-                color: var(--color-text-secondary);
-            }
-
-            .panel-count {
-                font-size: 0.72rem;
-                font-weight: 650;
-                color: var(--color-text-secondary);
-                background: color-mix(in srgb, var(--color-border) 16%, transparent);
-                border: 1px solid var(--color-border);
-                border-radius: 999px;
-                padding: 2px 8px;
-                line-height: 1.3;
-            }
-
-            .files-body {
-                position: relative;
-                padding: 12px 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-                flex: 1;
-                min-height: 0;
-                overflow: hidden;
-                background: color-mix(in srgb, var(--color-background) 55%, var(--color-panel, #fff));
-            }
-
-            .file-list {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-                flex: 1;
-                min-height: 0;
-                overflow-y: auto;
-            }
-
-            .files-panel file-list-row {
-                --file-row-accent: var(--color-primary);
-            }
-
-            .empty-note {
-                color: var(--color-text-secondary);
-                font-size: 0.875rem;
-                font-style: italic;
             }
 
             /* â”€â”€â”€ File upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -683,7 +321,7 @@ export class CasesPage extends LitElement {
             }
 
             /* Drag-and-drop attach */
-            .files-body.drag-over {
+            .list-panel-body.drag-over {
                 outline: 2px dashed var(--color-focus, var(--color-primary));
                 outline-offset: -6px;
             }
@@ -700,75 +338,6 @@ export class CasesPage extends LitElement {
                 color: var(--color-text-primary);
                 font-weight: 600;
                 pointer-events: none;
-            }
-
-            /* â”€â”€â”€ New Case form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-            .new-case-form {
-                border: 1px solid var(--color-border);
-                border-radius: 8px;
-                background: var(--color-surface, var(--color-background));
-                padding: 18px 20px 16px;
-                display: flex;
-                flex-direction: column;
-                gap: 14px;
-            }
-
-            .form-group {
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            .form-label {
-                font-size: 0.72rem;
-                font-weight: 650;
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
-                color: var(--color-text-secondary);
-            }
-
-            .form-input,
-            .form-textarea {
-                border: 1px solid var(--color-border);
-                border-radius: 6px;
-                padding: 9px 12px;
-                font: inherit;
-                font-size: 0.925rem;
-                background: var(--color-background);
-                color: var(--color-text-primary);
-                width: 100%;
-                box-sizing: border-box;
-                transition: border-color 0.14s, box-shadow 0.14s;
-            }
-
-            .form-input:focus,
-            .form-textarea:focus {
-                outline: none;
-                border-color: var(--color-primary);
-                box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 16%, transparent);
-            }
-
-            .form-textarea {
-                resize: vertical;
-                min-height: 76px;
-            }
-
-            .form-error-msg {
-                color: #c62828;
-                font-size: 0.875rem;
-            }
-
-            .form-actions {
-                display: flex;
-                justify-content: flex-end;
-                align-items: center;
-                gap: 8px;
-                padding-top: 6px;
-                border-top: 1px solid var(--color-border);
-            }
-
-            .form-actions-spacer {
-                margin-right: auto;
             }
 
             /* â”€â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -823,63 +392,6 @@ export class CasesPage extends LitElement {
 
             /* â”€â”€â”€ Dark mode overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-            /* Cards: lift them above the page background using --color-panel */
-            :host-context([data-theme='dark']) .case-card {
-                background: var(--color-panel);
-                border-left-color: var(--color-accent);
-            }
-
-            :host-context([data-theme='dark']) .case-card.is-archived {
-                border-left-color: var(--color-text-secondary);
-                opacity: 0.55;
-            }
-
-            :host-context([data-theme='dark']) .case-card:hover {
-                background: color-mix(in srgb, var(--color-panel) 80%, var(--color-accent));
-                border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
-                border-left-color: var(--color-accent);
-            }
-
-            /* Panels: lift above page background */
-            :host-context([data-theme='dark']) .files-panel,
-            :host-context([data-theme='dark']) .new-case-form,
-            :host-context([data-theme='dark']) .detail-header {
-                background: var(--color-panel);
-                border-color: var(--color-border);
-                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
-            }
-
-            :host-context([data-theme='dark']) .detail-header {
-                border-left-color: var(--color-accent);
-            }
-
-            :host-context([data-theme='dark']) .detail-title {
-                color: var(--color-text-primary);
-            }
-
-            :host-context([data-theme='dark']) .panel-header {
-                background: var(--color-panel);
-                border-bottom-color: var(--color-border);
-            }
-
-            :host-context([data-theme='dark']) .files-panel {
-                border-left-color: var(--color-accent);
-            }
-
-            :host-context([data-theme='dark']) .panel-title,
-            :host-context([data-theme='dark']) .panel-count {
-                color: var(--color-text-secondary);
-            }
-
-            :host-context([data-theme='dark']) .panel-count {
-                background: color-mix(in srgb, var(--color-border) 40%, transparent);
-                border-color: var(--color-border);
-            }
-
-            :host-context([data-theme='dark']) .files-body {
-                background: var(--color-background);
-            }
-
             :host-context([data-theme='dark']) .upload-action-row {
                 background: var(--color-panel);
                 border-top-color: var(--color-border);
@@ -896,20 +408,6 @@ export class CasesPage extends LitElement {
                 color: var(--color-on-secondary);
                 background: var(--color-accent);
                 border-color: var(--color-accent);
-            }
-
-            /* Inputs: sunken below the panel surface for legibility */
-            :host-context([data-theme='dark']) .form-input,
-            :host-context([data-theme='dark']) .form-textarea {
-                background: var(--color-background);
-                border-color: color-mix(in srgb, var(--color-border) 140%, transparent);
-                color: var(--color-text-primary);
-            }
-
-            :host-context([data-theme='dark']) .form-input:focus,
-            :host-context([data-theme='dark']) .form-textarea:focus {
-                border-color: var(--color-accent);
-                box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
             }
 
             /* Primary button: use the brighter accent so it doesn't vanish */
@@ -934,30 +432,13 @@ export class CasesPage extends LitElement {
                 border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
             }
 
-            /* Status chip */
-            :host-context([data-theme='dark']) .status-chip {
-                border-color: var(--color-border);
-                background: color-mix(in srgb, var(--color-border) 35%, transparent);
-                color: var(--color-text-secondary);
-            }
-
             /* Detail header separator */
             :host-context([data-theme='dark']) .detail-header {
                 border-bottom-color: var(--color-border);
             }
 
-            /* Page header separator */
-            :host-context([data-theme='dark']) .page-header-row {
-                border-bottom-color: var(--color-border);
-            }
-
             /* Upload row separator */
             :host-context([data-theme='dark']) .upload-action-row {
-                border-top-color: var(--color-border);
-            }
-
-            /* Form actions separator */
-            :host-context([data-theme='dark']) .form-actions {
                 border-top-color: var(--color-border);
             }
 
@@ -1075,7 +556,7 @@ export class CasesPage extends LitElement {
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
-        `;
+        `];
     }
 
     static get properties() {
@@ -2428,43 +1909,11 @@ export class CasesPage extends LitElement {
     }
 
     filterAttachments(attachments = [], query = this.attachmentSearchQuery) {
-        const needle = String(query || '').trim().toLowerCase();
-        const list = Array.isArray(attachments) ? attachments : [];
-        if (!needle) return [...list];
-        return list.filter((row) => {
-            const title = this.attachmentTitle(row).toLowerCase();
-            const original = String(row?.filenameDownload || '').toLowerCase();
-            return title.includes(needle) || original.includes(needle);
-        });
+        return filterByText(attachments, query, (row) => [this.attachmentTitle(row), row?.filenameDownload]);
     }
 
     sortAttachments(attachments = [], order = this.attachmentSortOrder) {
-        const list = Array.isArray(attachments) ? [...attachments] : [];
-        const titleOf = (row) => this.attachmentTitle(row).toLowerCase();
-        const timeOf = (row) => {
-            const value = Date.parse(row?.modifiedAt || '');
-            return Number.isFinite(value) ? value : null;
-        };
-
-        if (order === 'title') {
-            return list.sort((a, b) => {
-                const byTitle = titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-                return byTitle || String(a.id || '').localeCompare(String(b.id || ''));
-            });
-        }
-
-        const newestFirst = order !== 'oldest';
-        return list.sort((a, b) => {
-            const timeA = timeOf(a);
-            const timeB = timeOf(b);
-            if (timeA == null && timeB == null) {
-                return titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-            }
-            if (timeA == null) return 1;
-            if (timeB == null) return -1;
-            const diff = newestFirst ? timeB - timeA : timeA - timeB;
-            return diff || titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-        });
+        return sortRows(attachments, order, { titleOf: (row) => this.attachmentTitle(row), timeOf: (row) => row?.modifiedAt });
     }
 
     caseTitle(caseRow) {
@@ -2472,43 +1921,11 @@ export class CasesPage extends LitElement {
     }
 
     filterCases(cases = [], query = this.caseSearchQuery) {
-        const needle = String(query || '').trim().toLowerCase();
-        const list = Array.isArray(cases) ? cases : [];
-        if (!needle) return [...list];
-        return list.filter((row) => {
-            const title = this.caseTitle(row).toLowerCase();
-            const description = String(row?.description || '').toLowerCase();
-            return title.includes(needle) || description.includes(needle);
-        });
+        return filterByText(cases, query, (row) => [this.caseTitle(row), row?.description]);
     }
 
     sortCases(cases = [], order = this.caseSortOrder) {
-        const list = Array.isArray(cases) ? [...cases] : [];
-        const titleOf = (row) => this.caseTitle(row).toLowerCase();
-        const timeOf = (row) => {
-            const value = Date.parse(this.caseLastModifiedAt(row) || '');
-            return Number.isFinite(value) ? value : null;
-        };
-
-        if (order === 'title') {
-            return list.sort((a, b) => {
-                const byTitle = titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-                return byTitle || String(a.id || '').localeCompare(String(b.id || ''));
-            });
-        }
-
-        const newestFirst = order !== 'oldest';
-        return list.sort((a, b) => {
-            const timeA = timeOf(a);
-            const timeB = timeOf(b);
-            if (timeA == null && timeB == null) {
-                return titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-            }
-            if (timeA == null) return 1;
-            if (timeB == null) return -1;
-            const diff = newestFirst ? timeB - timeA : timeA - timeB;
-            return diff || titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base' });
-        });
+        return sortRows(cases, order, { titleOf: (row) => this.caseTitle(row), timeOf: (row) => this.caseLastModifiedAt(row) });
     }
 
     closeListFilterMenus() {
@@ -2663,6 +2080,22 @@ export class CasesPage extends LitElement {
         return this.handleOpenAttachment(caseRow, attachment, { simplified: viewer === 'simplified' });
     }
 
+    /**
+     * SlicerWeb URL for the chosen channel and workflow (<case-workflows>; null = the default
+     * extensions). The installed build's SHA goes in as ?v= so a new build skips any stale
+     * service-worker cache.
+     */
+    async _slicerWebUrl() {
+        const channel = (isSlicerWebDevModeEnabled() && getCachedUserPreferences().slicerWebChannel === 'latest')
+            ? 'latest' : 'stable';
+        const statusData = await fetch('/api/slicerweb/status', { credentials: 'include' })
+            .then((r) => r.ok ? r.json() : null)
+            .catch(() => null);
+        const sha = statusData?.[channel] ?? null;
+        const extensions = this._workflowExtensions;
+        return buildSlicerWebUrl({ channel, sha, ...(extensions ? { extensions } : {}) });
+    }
+
     async handleOpenSlicerWeb(caseRow, attachment) {
         if (this.openingAttachmentId || !attachment?.canOpenInSlicer) return;
 
@@ -2677,9 +2110,6 @@ export class CasesPage extends LitElement {
         this.currentAttachmentId = attachment.id;
         this.selectedCaseId = caseRow.id;
 
-        const channel = (isSlicerWebDevModeEnabled() && getCachedUserPreferences().slicerWebChannel === 'latest')
-            ? 'latest' : 'stable';
-
         // For the latest channel: open immediately with whatever is installed.
         // A background download may already be in progress (started on page load).
         // When it finishes, a toast notifies the user so they can reopen for the new version.
@@ -2692,13 +2122,7 @@ export class CasesPage extends LitElement {
         download.catch(() => {}); // surfaced when awaited
         this._slicerWebPending = { download, fileName: this.currentFileName };
 
-        // Fetch installed SHA to include as ?v= in the iframe URL, which breaks any
-        // stale service-worker cache when a new build lands.
-        const statusData = await fetch('/api/slicerweb/status', { credentials: 'include' })
-            .then((r) => r.ok ? r.json() : null)
-            .catch(() => null);
-        const sha = statusData?.[channel] ?? null;
-        this.iframeUrl = buildSlicerWebUrl({ channel, sha });
+        this.iframeUrl = await this._slicerWebUrl();
 
         this._pushViewerHistory(caseRow.id);
 
@@ -2842,7 +2266,6 @@ export class CasesPage extends LitElement {
             if (!Array.isArray(loadResult) || loadResult.length === 0) {
                 throw new Error(t('errors.slicerLoadFailed'));
             }
-
 
             await new Promise((r) => setTimeout(r, 500));
             if (!cancelled()) {
@@ -3204,18 +2627,11 @@ export class CasesPage extends LitElement {
         this.showIframe = true;
         this.selectedCaseId = caseRow.id;
 
-        const channel = (isSlicerWebDevModeEnabled() && getCachedUserPreferences().slicerWebChannel === 'latest')
-            ? 'latest' : 'stable';
-
         this.viewerLoadingDetail = t('cases.openingSlicerWeb');
         this._slicerWebRun += 1;
         this._slicerWebPending = { blank: true };
 
-        const statusData = await fetch('/api/slicerweb/status', { credentials: 'include' })
-            .then((r) => r.ok ? r.json() : null)
-            .catch(() => null);
-        const sha = statusData?.[channel] ?? null;
-        this.iframeUrl = buildSlicerWebUrl({ channel, sha });
+        this.iframeUrl = await this._slicerWebUrl();
 
         this._pushViewerHistory(caseRow.id);
     }
@@ -3291,7 +2707,7 @@ export class CasesPage extends LitElement {
                 ` : ''}
 
                 ${this.showNewCaseForm ? html`
-                    <form slot="content" class="new-case-form" @submit=${(e) => this.handleNewCaseSubmit(e)} novalidate>
+                    <form slot="content" class="form-panel" @submit=${(e) => this.handleNewCaseSubmit(e)} novalidate>
                         <h3>${t('cases.newCase')}</h3>
 
                         <div class="form-group">
@@ -3325,7 +2741,7 @@ export class CasesPage extends LitElement {
                             <div class="form-error-msg">${this.newCaseError}</div>
                         ` : ''}
 
-                        <div class="form-actions">
+                        <div class="form-actions is-sticky">
                             <button
                                 class="primary-button"
                                 type="submit"
@@ -3346,26 +2762,26 @@ export class CasesPage extends LitElement {
                 ` : ''}
 
                 ${!this.loading && this.cases.length > 0 && filteredCases.length === 0 && !this.showNewCaseForm ? html`
-                    <p slot="content" class="cases-empty-filter">No cases match â€œ${this.caseSearchQuery.trim()}â€.</p>
+                    <p slot="content" class="empty-filter">No cases match “${this.caseSearchQuery.trim()}”.</p>
                 ` : ''}
 
                 ${!this.loading && filteredCases.length > 0 ? html`
-                    <div slot="content" class="case-grid">
+                    <div slot="content" class="card-grid">
                         ${filteredCases.map((row) => {
                             const isArchived = row.status === 'archived';
                             const modifiedLabel = this.caseLastModifiedLabel(row);
                             const newCommentCount = this.countNewCaseComments(row);
                             return html`
                                 <button
-                                    class=${isArchived ? 'case-card is-archived' : 'case-card'}
+                                    class=${isArchived ? 'card is-archived' : 'card'}
                                     type="button"
                                     @click=${() => this.openCase(row.id)}
                                 >
-                                    <div class="case-card-title-row">
-                                        <span class="case-card-title">${row.title || t('cases.untitled')}</span>
+                                    <div class="card-title-row">
+                                        <span class="card-title">${row.title || t('cases.untitled')}</span>
                                         ${newCommentCount > 0 ? html`
                                             <span
-                                                class="case-card-new-badge"
+                                                class="card-badge"
                                                 title=${newCommentCount === 1
                                                     ? t('cases.oneNewComment')
                                                     : t('cases.nNewComments', { n: newCommentCount })}
@@ -3373,11 +2789,11 @@ export class CasesPage extends LitElement {
                                         ` : ''}
                                     </div>
                                     ${row.description ? html`
-                                        <p class="case-card-desc">${row.description}</p>
+                                        <p class="card-desc">${row.description}</p>
                                     ` : ''}
                                     ${modifiedLabel ? html`
-                                        <div class="case-card-meta-row">
-                                            <span class="case-card-meta-item">${modifiedLabel}</span>
+                                        <div class="card-meta-row">
+                                            <span class="card-meta-item">${modifiedLabel}</span>
                                         </div>
                                     ` : ''}
                                     ${isArchived ? html`
@@ -3446,7 +2862,7 @@ export class CasesPage extends LitElement {
                     </div>
 
                     ${this.editingCase ? html`
-                        <form class="new-case-form" @submit=${(e) => { e.preventDefault(); this.saveEditCase(caseRow); }} novalidate>
+                        <form class="form-panel" @submit=${(e) => { e.preventDefault(); this.saveEditCase(caseRow); }} novalidate>
                             <div class="form-group">
                                 <label class="form-label" for="edit-case-title">${t('cases.createTitle').replace(' *', '')}</label>
                                 <input
@@ -3471,7 +2887,7 @@ export class CasesPage extends LitElement {
                                 ></textarea>
                             </div>
                             ${this.caseEditError ? html`<div class="form-error-msg">${this.caseEditError}</div>` : ''}
-                            <div class="form-actions">
+                            <div class="form-actions is-sticky">
                                 ${canManage && caseRow.status !== 'archived' ? html`
                                     <button
                                         class="quiet-button form-actions-spacer"
@@ -3507,8 +2923,13 @@ export class CasesPage extends LitElement {
                         ></page-content-message>
                     ` : ''}
 
+                    <case-workflows
+                        .caseId=${String(caseRow.id)}
+                        @workflow-change=${(e) => { this._workflowExtensions = e.detail.extensions; }}
+                    ></case-workflows>
+
                     <div class="case-detail-grid">
-                        <div class="files-panel">
+                        <div class="list-panel">
                             <div class="panel-header">
                                 <div class="panel-header-start">
                                     <h3 class="panel-title">${t('cases.attachments')}</h3>
@@ -3535,7 +2956,7 @@ export class CasesPage extends LitElement {
                                 ` : ''}
                             </div>
                             <div
-                                class="files-body ${this.attachmentDragOver ? 'drag-over' : ''}"
+                                class="list-panel-body ${this.attachmentDragOver ? 'drag-over' : ''}"
                                 @dragenter=${(e) => this.handleAttachmentDragEnter(e, caseRow)}
                                 @dragover=${(e) => this.handleAttachmentDragOver(e, caseRow)}
                                 @dragleave=${(e) => this.handleAttachmentDragLeave(e)}
@@ -3548,9 +2969,9 @@ export class CasesPage extends LitElement {
                                 ${allAttachments.length === 0 ? html`
                                     <div class="empty-note">${t('cases.noFiles')}</div>
                                 ` : attachments.length === 0 ? html`
-                                    <div class="empty-note">No attachments match â€œ${this.attachmentSearchQuery.trim()}â€.</div>
+                                    <div class="empty-note">No attachments match “${this.attachmentSearchQuery.trim()}”.</div>
                                 ` : html`
-                                    <div class="file-list">
+                                    <div class="list-panel-items">
                                         ${attachments.map((attachment) => html`
                                             <file-list-row
                                                 .fileName=${this.attachmentTitle(attachment)}

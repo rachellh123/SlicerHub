@@ -11,7 +11,9 @@
  */
 
 import config from '../config/index.js';
-import { ForbiddenError } from './errors.js';
+import { ForbiddenError, NotFoundError } from './errors.js';
+import { getPayloadClient } from '../payload/index.js';
+import { isDocId } from './validation.js';
 import { getUserCaseRole, getUserCaseRoleMap } from '../services/keycloakAdmin.js';
 import { getCaseRoleFromGroups, getCaseRoleMapFromGroups } from '../services/caseGroupAccess.js';
 
@@ -81,6 +83,21 @@ export async function assertCaseAccess(caseDoc, req, minRole = 'read_only') {
         throw new ForbiddenError();
     }
     return role;
+}
+
+/**
+ * Load a case and check the requester has at least `minRole` on it — the opening of most
+ * case-scoped routes. Throws NotFoundError / ForbiddenError.
+ *
+ * @returns {Promise<{ caseDoc: object, role: 'admin'|'collaborator'|'read_only' }>}
+ */
+export async function loadCaseWithAccess(caseId, req, minRole = 'read_only') {
+    const caseDoc = isDocId(caseId)
+        ? await getPayloadClient().findByID({ collection: 'cases', id: caseId, depth: 0, disableErrors: true })
+        : null;
+    if (!caseDoc) throw new NotFoundError('Case not found');
+    const role = await assertCaseAccess(caseDoc, req, minRole);
+    return { caseDoc, role };
 }
 
 /**

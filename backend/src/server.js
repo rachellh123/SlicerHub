@@ -41,6 +41,8 @@ import { getUsersWithRealmRole } from "./services/keycloakAdmin.js";
 import { addGroupMember } from "./services/groupStore.js";
 import casesRoutes from "./routes/cases.js";
 import caseCollaboratorsRoutes from "./routes/caseCollaborators.js";
+import workflowRoutes from "./routes/workflows.js";
+import caseWorkflowRoutes from "./routes/caseWorkflows.js";
 import { registerCaseTusRoute } from "./routes/caseTus.js";
 
 async function seedRegistrationReviewersGroup() {
@@ -209,6 +211,8 @@ projectGpuRoutes(app);
 // would otherwise be swallowed by the /api/cases/:id handler in casesRoutes.
 caseCollaboratorsRoutes(app);
 casesRoutes(app);
+workflowRoutes(app);     // /api/workflows
+caseWorkflowRoutes(app); // /api/cases/:id/workflows
 
 // Register container routes
 containerRoutes(app);

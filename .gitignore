@@ -8,11 +8,13 @@ node_modules/
 .venv/
 **/.venv/
 
-# Database and uploads (user data)
+# App data: databases, uploads and other files people create (storage roots in
+# backend/src/storage/contract.js). None of it belongs in git.
 backend/data/
-backend/userFiles/
 userFiles/
 caseFiles/
+avatars/
+workflowIcons/
 data/
 !data/slicer-gui/
 !data/slicer-gui/.gitkeep
