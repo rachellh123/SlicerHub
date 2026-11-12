@@ -8,7 +8,8 @@ export default {
         route_not_found: 'Route {method} {path} not found'
     },
     avatar: {
-        required: 'No file received.'
+        required: 'No file received.',
+        invalid_type: 'The picture must be a PNG, JPEG, GIF, WebP or HEIC image.'
     },
     rate_limit: {
         generic: 'Too many requests'

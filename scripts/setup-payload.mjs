@@ -211,7 +211,8 @@ async function main() {
   Watch for: "Payload: initialized"
 
   Payload's tables (cases and attachments, case invites, groups, registration
-  requests, notifications, user preferences, the site announcement) are in place.
+  requests, notifications, user preferences, workflows and case workflow
+  approvals, the site announcement) are in place.
 
   To enable the SlicerWeb developer channel (latest build) in the UI,
   add to .env (after credentials are configured):

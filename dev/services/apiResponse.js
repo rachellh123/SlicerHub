@@ -4,12 +4,15 @@
  *   readJson(response)                      the JSON body, or {} when there is none
  *   apiError(response, data, fallback, opts) an Error with .status, .code and .payload (the body)
  *   parseApiResponse(response, fallback)    the body of a successful response, else throws apiError
+ *   apiRequest(path, { method, body })      fetch an /api path with the session cookie, then parseApiResponse
+ *                                           (body: JSON, or FormData for uploads)
  *
  * With { friendly: true } the message goes through friendlyCasesError, so the person never
  * sees server jargon.
  */
 
 import { t } from '../i18n/index.js';
+import { API_URL } from '../config.js';
 
 /**
  * Map API errors to short user-facing copy.
@@ -124,4 +127,21 @@ export async function parseApiResponse(response, fallback, options) {
     const data = await readJson(response);
     if (!response.ok) throw apiError(response, data, fallback, options);
     return data;
+}
+
+/**
+ * Call the backend: `path` like '/api/workflows', `body` sent as JSON. Resolves the parsed
+ * body (null for 204), or throws apiError (with { friendly } as for parseApiResponse).
+ */
+export async function apiRequest(path, { method = 'GET', body, fallback, friendly = false } = {}) {
+    const response = await fetch(`${API_URL}${path}`, {
+        method,
+        credentials: 'include',
+        cache: 'no-store',
+        ...(body === undefined ? {}
+            : body instanceof FormData ? { body }
+            : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+    if (response.status === 204) return null;
+    return parseApiResponse(response, fallback, { friendly });
 }

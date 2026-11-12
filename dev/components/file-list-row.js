@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit-element';
 import { initializeTheme } from './theme.js';
 import { t } from '../i18n/index.js';
+import { ICON_PENCIL } from '../utils/icons.js';
 
 const NAME_CLICK_DELAY_MS = 280;
 const LONG_PRESS_MS = 550;
@@ -8,6 +9,8 @@ const LONG_PRESS_MOVE_PX = 10;
 
 /**
  * One row in a file list: clickable name + meta line + icon actions via <slot name="actions">.
+ * `plain`: the name is text, not a button (rows with nothing to open, e.g. workflow extensions).
+ * <slot name="leading">: something before the name, e.g. an icon.
  */
 export class FileListRow extends LitElement {
     static get styles() {
@@ -87,6 +90,12 @@ export class FileListRow extends LitElement {
                 color: var(--color-accent);
             }
 
+            .file-name {
+                color: var(--color-text-primary);
+                font-weight: 600;
+                word-break: break-word;
+            }
+
             .file-name-button:disabled {
                 opacity: 0.55;
                 cursor: not-allowed;
@@ -108,7 +117,7 @@ export class FileListRow extends LitElement {
                 transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
             }
 
-            .edit-title-button .edit-title-icon {
+            .edit-title-button svg {
                 width: 14px;
                 height: 14px;
                 display: block;
@@ -205,6 +214,7 @@ export class FileListRow extends LitElement {
     static get properties() {
         return {
             fileName: { type: String },
+            plain: { type: Boolean },
             metaLine: { type: String },
             nameButtonTitle: { type: String },
             nameButtonDisabled: { type: Boolean },
@@ -342,9 +352,10 @@ export class FileListRow extends LitElement {
     render() {
         return html`
             <div class="file-row">
+                <slot name="leading"></slot>
                 <div class="file-main">
                     <div class="file-title-row">
-                        <button
+                        ${this.plain ? html`<span class="file-name">${this.fileName}</span>` : html`<button
                             class="file-name-button"
                             type="button"
                             title=${this.nameButtonTitle || undefined}
@@ -358,7 +369,7 @@ export class FileListRow extends LitElement {
                             @pointerleave=${this.handleNamePointerEnd}
                         >
                             ${this.fileName}
-                        </button>
+                        </button>`}
                         <slot name="title-trailing"></slot>
                         ${this.showEditTitle ? html`
                             <button
@@ -368,9 +379,7 @@ export class FileListRow extends LitElement {
                                 ?disabled=${this.editTitleDisabled}
                                 @click=${this.handleEditTitleClick}
                             >
-                                <svg class="edit-title-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path fill="currentColor" d="M3 17.25V21h3.75l11-11.03-3.75-3.75L3 17.25zm14.81-9.06 1.83-1.83a1 1 0 0 0 0-1.41l-1.41-1.41a1 1 0 0 0-1.41 0l-1.83 1.83 2.82 2.82z"></path>
-                                </svg>
+                                ${ICON_PENCIL}
                             </button>
                         ` : ''}
                     </div>
